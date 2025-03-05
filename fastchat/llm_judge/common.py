@@ -14,6 +14,18 @@ from typing import Optional
 import openai
 import anthropic
 
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = OpenAI(
+    # model=os.environ['LOCAL_LLM_MODEL_NAME'],
+    # openai_api_base=os.environ['LOCAL_LLM_API_URL'],
+    api_key=os.environ['OPENAI_API_KEY'],
+    # api_key=os.environ['LOCAL_LLM_API_KEY'],
+)
+
 from fastchat.model.model_adapter import (
     get_conversation_template,
     ANTHROPIC_MODEL_LIST,
@@ -405,23 +417,18 @@ def play_a_match_pair(match: MatchPair, output_file: str):
 
 
 def chat_completion_openai(model, conv, temperature, max_tokens, api_dict=None):
-    if api_dict is not None:
-        openai.api_base = api_dict["api_base"]
-        openai.api_key = api_dict["api_key"]
     output = API_ERROR_OUTPUT
     for _ in range(API_MAX_RETRY):
         try:
             messages = conv.to_openai_api_messages()
-            response = openai.ChatCompletion.create(
-                model=model,
-                messages=messages,
-                n=1,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-            output = response["choices"][0]["message"]["content"]
+            response = client.chat.completions.create(model=model,
+            messages=messages,
+            n=1,
+            temperature=temperature,
+            max_tokens=max_tokens)
+            output = response.choices[0].message.content
             break
-        except openai.error.OpenAIError as e:
+        except openai.OpenAIError as e:
             print(type(e), e)
             time.sleep(API_RETRY_SLEEP)
 
@@ -429,15 +436,6 @@ def chat_completion_openai(model, conv, temperature, max_tokens, api_dict=None):
 
 
 def chat_completion_openai_azure(model, conv, temperature, max_tokens, api_dict=None):
-    openai.api_type = "azure"
-    openai.api_version = "2023-07-01-preview"
-    if api_dict is not None:
-        openai.api_base = api_dict["api_base"]
-        openai.api_key = api_dict["api_key"]
-    else:
-        openai.api_base = os.environ["AZURE_OPENAI_ENDPOINT"]
-        openai.api_key = os.environ["AZURE_OPENAI_KEY"]
-
     if "azure-" in model:
         model = model[6:]
 
@@ -445,19 +443,17 @@ def chat_completion_openai_azure(model, conv, temperature, max_tokens, api_dict=
     for _ in range(API_MAX_RETRY):
         try:
             messages = conv.to_openai_api_messages()
-            response = openai.ChatCompletion.create(
-                engine=model,
-                messages=messages,
-                n=1,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-            output = response["choices"][0]["message"]["content"]
+            response = client.chat.completions.create(model=model,
+            messages=messages,
+            n=1,
+            temperature=temperature,
+            max_tokens=max_tokens)
+            output = response.choices[0].message.content
             break
-        except openai.error.OpenAIError as e:
+        except openai.OpenAIError as e:
             print(type(e), e)
             time.sleep(API_RETRY_SLEEP)
-        except openai.error.InvalidRequestError as e:
+        except openai.InvalidRequestError as e:
             print(type(e), e)
             break
         except KeyError:
