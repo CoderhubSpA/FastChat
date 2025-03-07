@@ -19,13 +19,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-if os.getenv('JUDGE_LLM', default='gpt') is 'gpt':
+if os.getenv('JUDGE_LLM', default='gpt') == 'gpt':
     client = OpenAI(
         api_key=os.environ['OPENAI_API_KEY'],
     )
 else:
     client = OpenAI(
-        model_name=os.environ['LOCAL_LLM_MODEL_NAME'],
+        # model_name=os.environ['LOCAL_LLM_MODEL_NAME'],
         base_url=os.environ['LOCAL_LLM_API_URL'],
         api_key=os.environ['LOCAL_LLM_API_KEY'],
     )
@@ -47,10 +47,10 @@ TIE_DELTA = 0.1
 NEED_REF_CATS = ["math", "reasoning", "coding", "arena-hard-200"]
 
 # Extract scores from judgments
-two_score_pattern = re.compile("\[\[(\d+\.?\d*),\s?(\d+\.?\d*)\]\]")
-two_score_pattern_backup = re.compile("\[(\d+\.?\d*),\s?(\d+\.?\d*)\]")
-one_score_pattern = re.compile("\[\[(\d+\.?\d*)\]\]")
-one_score_pattern_backup = re.compile("\[(\d+\.?\d*)\]")
+two_score_pattern = re.compile(r"\[\[(\d+\.?\d*),\s?(\d+\.?\d*)\]\]")
+two_score_pattern_backup = re.compile(r"\[(\d+\.?\d*),\s?(\d+\.?\d*)\]")
+one_score_pattern = re.compile(r"\[\[(\d+\.?\d*)\]\]")
+one_score_pattern_backup = re.compile(r"\[(\d+\.?\d*)\]")
 
 # Sampling temperature configs for
 temperature_config = {
