@@ -19,16 +19,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-if os.getenv('JUDGE_LLM', default='gpt') == 'gpt':
-    client = OpenAI(
-        api_key=os.environ['OPENAI_API_KEY'],
-    )
-else:
-    client = OpenAI(
-        # model_name=os.environ['LOCAL_LLM_MODEL_NAME'],
-        base_url=os.environ['LOCAL_LLM_API_URL'],
-        api_key=os.environ['LOCAL_LLM_API_KEY'],
-    )
+
+match os.getenv('JUDGE_LLM', default='gpt'):
+    case 'gpt':
+        client = OpenAI(
+            api_key=os.environ['OPENAI_API_KEY'],
+        )
+    case 'local':
+        client = OpenAI(
+            base_url=os.environ['LOCAL_LLM_API_URL'],
+            api_key=os.environ['LOCAL_LLM_API_KEY'],
+        )
+    case _:
+        client = OpenAI(
+            base_url="ENTER_BASE_URL",
+            api_key="ENTER_API_KEY",
+        )
 
 from fastchat.model.model_adapter import (
     get_conversation_template,
