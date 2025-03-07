@@ -345,16 +345,53 @@ def build_single_answer_browser_tab():
 
 block_css = """
 #user_question_1 {
-    background-color: #DEEBF7;
+    background-color: rgba(222, 235, 247, 0.5);
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+    color: var(--body-text-color);
 }
+
 #user_question_2 {
-    background-color: #E2F0D9;
+    background-color: rgba(226, 240, 217, 0.5);
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+    color: var(--body-text-color);
 }
+
 #reference {
-    background-color: #FFF2CC;
+    background-color: rgba(255, 242, 204, 0.5);
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+    color: var(--body-text-color);
 }
+
 #model_explanation {
-    background-color: #FBE5D6;
+    background-color: rgba(251, 229, 214, 0.5);
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+    color: var(--body-text-color);
+}
+
+/* Adding styles for headers within these sections */
+#user_question_1 h5,
+#user_question_2 h5,
+#reference h5,
+#model_explanation h5 {
+    color: var(--heading-text-color);
+    margin-bottom: 8px;
+}
+
+/* Adding styles for the content */
+#user_question_1 p,
+#user_question_2 p,
+#reference p,
+#model_explanation p {
+    color: var(--body-text-color);
+    margin: 0;
 }
 """
 
