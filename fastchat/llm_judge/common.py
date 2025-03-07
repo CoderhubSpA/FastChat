@@ -19,12 +19,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(
-    # model=os.environ['LOCAL_LLM_MODEL_NAME'],
-    # openai_api_base=os.environ['LOCAL_LLM_API_URL'],
-    api_key=os.environ['OPENAI_API_KEY'],
-    # api_key=os.environ['LOCAL_LLM_API_KEY'],
-)
+if os.getenv('JUDGE_LLM', default='gpt') is 'gpt':
+    client = OpenAI(
+        api_key=os.environ['OPENAI_API_KEY'],
+    )
+else:
+    client = OpenAI(
+        model_name=os.environ['LOCAL_LLM_MODEL_NAME'],
+        base_url=os.environ['LOCAL_LLM_API_URL'],
+        api_key=os.environ['LOCAL_LLM_API_KEY'],
+    )
 
 from fastchat.model.model_adapter import (
     get_conversation_template,
@@ -100,7 +104,7 @@ class MatchPair:
 def load_questions(question_file: str, begin: Optional[int], end: Optional[int]):
     """Load questions from a file."""
     questions = []
-    with open(question_file, "r") as ques_file:
+    with open(question_file, "r", encoding='utf-8') as ques_file:
         for line in ques_file:
             if line:
                 questions.append(json.loads(line))
