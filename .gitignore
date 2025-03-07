@@ -36,3 +36,4 @@ val2014
 vqa_examples
 
 .env
+dt_bench/
