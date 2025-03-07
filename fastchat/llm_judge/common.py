@@ -30,7 +30,7 @@ match os.getenv('JUDGE_LLM', default='gpt'):
             base_url=os.environ['LOCAL_LLM_API_URL'],
             api_key=os.environ['LOCAL_LLM_API_KEY'],
         )
-    case _:
+    case 'other':
         client = OpenAI(
             base_url="ENTER_BASE_URL",
             api_key="ENTER_API_KEY",
