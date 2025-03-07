@@ -37,3 +37,4 @@ vqa_examples
 
 .env
 dt_bench/
+*.pem
