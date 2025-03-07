@@ -139,18 +139,20 @@ def pairwise_to_gradio_chat_mds(question, ans_a, ans_b, turn=None):
             ans_b["choices"][0]["turns"][i].strip()
         )
 
-    ref = question.get("reference", ["", ""])
+    ref = question.get("reference", [])  # Default to empty list if no reference
 
-    ref_md = ""
     if turn is None:
-        if ref[0] != "" or ref[1] != "":
-            mds[6] = f"##### Reference Solution\nQ1. {ref[0]}\nQ2. {ref[1]}"
+        if ref:  # If there are any references
+            if len(ref) == 1:
+                mds[6] = f"##### Reference Solution\nQ1. {ref[0]}"
+            elif len(ref) >= 2:
+                mds[6] = f"##### Reference Solution\nQ1. {ref[0]}\nQ2. {ref[1]}"
     else:
-        x = ref[turn] if turn < len(ref) else ""
-        if x:
+        if ref and turn < len(ref) and ref[turn]:
             mds[6] = f"##### Reference Solution\n{ref[turn]}"
         else:
             mds[6] = ""
+
     return mds
 
 
@@ -168,18 +170,20 @@ def single_to_gradio_chat_mds(question, ans, turn=None):
             ans["choices"][0]["turns"][i].strip()
         )
 
-    ref = question.get("reference", ["", ""])
+    ref = question.get("reference", [])  # Default to empty list if no reference
 
-    ref_md = ""
     if turn is None:
-        if ref[0] != "" or ref[1] != "":
-            mds[4] = f"##### Reference Solution\nQ1. {ref[0]}\nQ2. {ref[1]}"
+        if ref:  # If there are any references
+            if len(ref) == 1:
+                mds[4] = f"##### Reference Solution\nQ1. {ref[0]}"
+            elif len(ref) >= 2:
+                mds[4] = f"##### Reference Solution\nQ1. {ref[0]}\nQ2. {ref[1]}"
     else:
-        x = ref[turn] if turn < len(ref) else ""
-        if x:
+        if ref and turn < len(ref) and ref[turn]:
             mds[4] = f"##### Reference Solution\n{ref[turn]}"
         else:
             mds[4] = ""
+
     return mds
 
 
