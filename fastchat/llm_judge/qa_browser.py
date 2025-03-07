@@ -15,11 +15,14 @@ from fastchat.llm_judge.common import (
     load_single_model_judgments,
     load_pairwise_model_judgments,
     resolve_single_judgment_dict,
-    resolve_pairwise_judgment_dict,
+    # resolve_pairwise_judgment_dict,
     get_single_judge_explanation,
     get_pairwise_judge_explanation,
 )
 
+def resolve_pairwise_judgment_dict(question, model_judgments_normal, model_judgments_math, multi_turn=False):
+    """Local version that only handles single-turn judgments"""
+    return model_judgments_normal[("gpt-4", "pair-v2")]
 
 questions = []
 model_answers = {}
