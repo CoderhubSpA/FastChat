@@ -110,15 +110,15 @@ def display_single_answer(question_selector, model_selector1, request: gr.Reques
     return chat_mds + [explanation] + [explanation_turn2]
 
 
-newline_pattern1 = re.compile("\n\n(\d+\. )")
-newline_pattern2 = re.compile("\n\n(- )")
+newline_pattern1 = re.compile(r"\n\n(\d+\. )")
+newline_pattern2 = re.compile(r"\n\n(- )")
 
 
 def post_process_answer(x):
     """Fix Markdown rendering problems."""
     x = x.replace("\u2022", "- ")
-    x = re.sub(newline_pattern1, "\n\g<1>", x)
-    x = re.sub(newline_pattern2, "\n\g<1>", x)
+    x = re.sub(newline_pattern1, r"\n\g<1>", x)
+    x = re.sub(newline_pattern2, r"\n\g<1>", x)
     return x
 
 
