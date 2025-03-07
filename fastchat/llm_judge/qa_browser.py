@@ -353,8 +353,8 @@ block_css = """
 
 
 def load_demo():
-    dropdown_update = gr.Dropdown.update(value=list(category_selector_map.keys())[0])
-    return dropdown_update, dropdown_update
+    first_category = list(category_selector_map.keys())[0]
+    return first_category, first_category
 
 
 def build_demo():
