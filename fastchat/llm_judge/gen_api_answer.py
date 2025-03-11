@@ -99,7 +99,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-tokens",
         type=int,
-        default=1024,
+        default=2048,
         help="The maximum number of new generated tokens.",
     )
     parser.add_argument(
