@@ -436,16 +436,17 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int)
     parser.add_argument("--share", action="store_true")
     parser.add_argument("--bench-name", type=str, default="mt_bench")
+    parser.add_argument("--judge-model", type=str, default="gpt-4o-mini")
     args = parser.parse_args()
     print(args)
 
     question_file = f"data/{args.bench_name}/question.jsonl"
     answer_dir = f"data/{args.bench_name}/model_answer"
     pairwise_model_judgment_file = (
-        f"data/{args.bench_name}/model_judgment/gpt-4_pair.jsonl"
+        f"data/{args.bench_name}/model_judgment/{args.judge_model}_pair.jsonl"
     )
     single_model_judgment_file = (
-        f"data/{args.bench_name}/model_judgment/gpt-4_single.jsonl"
+        f"data/{args.bench_name}/model_judgment/{args.judge_model}_single.jsonl"
     )
 
     # Load questions
