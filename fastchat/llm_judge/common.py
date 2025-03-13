@@ -131,7 +131,7 @@ def load_model_answers(answer_dir: str):
     for filename in filenames:
         model_name = os.path.basename(filename)[:-6]
         answer = {}
-        with open(filename) as fin:
+        with open(filename, encoding='utf-8') as fin:
             for line in fin:
                 line = json.loads(line)
                 answer[line["question_id"]] = line
@@ -435,7 +435,8 @@ def chat_completion_openai(model, conv, temperature, max_tokens, api_dict=None):
             messages=messages,
             n=1,
             temperature=temperature,
-            max_tokens=max_tokens)
+            max_tokens=max_tokens
+            )
             output = response.choices[0].message.content
             break
         except openai.OpenAIError as e:
@@ -617,38 +618,10 @@ def load_single_model_judgments(filename: str):
     return judge_dict
 
 
-def resolve_pairwise_judgment_dict(
-    question, model_judgments_normal, model_judgments_math, multi_turn=False
-):
-    """Return the correct pairwise judge."""
-    if multi_turn:
-        if question["category"] in NEED_REF_CATS:
-            return model_judgments_math[("gpt-4", "pair-math-v1-multi-turn")]
-        return model_judgments_normal[("gpt-4", "pair-v2-multi-turn")]
-
-    if question["category"] in NEED_REF_CATS:
-        return model_judgments_math[("gpt-4", "pair-math-v1")]
-    else:
-        return model_judgments_normal[("gpt-4", "pair-v2")]
-
-
-def resolve_single_judgment_dict(
-    question, model_judgments_normal, model_judgments_math, multi_turn=False
-):
-    """Return the correct single answer grading judge."""
-    if multi_turn:
-        if question["category"] in NEED_REF_CATS:
-            return model_judgments_math[("gpt-4", "single-math-v1-multi-turn")]
-        return model_judgments_normal[("gpt-4", "single-v1-multi-turn")]
-
-    if question["category"] in NEED_REF_CATS:
-        return model_judgments_math[("gpt-4", "single-math-v1")]
-    else:
-        return model_judgments_normal[("gpt-4", "single-v1")]
-
-
 def get_pairwise_judge_explanation(gamekey, judgment_dict):
     """Get model judge explanation."""
+    if not judgment_dict:
+        return "No judgment available"
     try:
         qid, model_1, model_2 = gamekey
         if model_1 < model_2:
@@ -674,6 +647,8 @@ def get_pairwise_judge_explanation(gamekey, judgment_dict):
 
 def get_single_judge_explanation(gamekey, judgment_dict):
     """Get model judge explanation."""
+    if not judgment_dict:
+        return "No judgment available"
     try:
         qid, model = gamekey
 
