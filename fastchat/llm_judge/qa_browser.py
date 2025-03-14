@@ -14,8 +14,6 @@ from fastchat.llm_judge.common import (
     load_model_answers,
     load_single_model_judgments,
     load_pairwise_model_judgments,
-    # resolve_single_judgment_dict,
-    # resolve_pairwise_judgment_dict,
     get_single_judge_explanation,
     get_pairwise_judge_explanation,
     NEED_REF_CATS
