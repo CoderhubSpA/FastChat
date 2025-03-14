@@ -91,6 +91,8 @@ OPENAI_MODEL_LIST = (
     "chatgpt-4o-latest",
     "o1-preview",
     "o1-mini",
+    "gpt-4o-mini",
+    "o3-mini" # Unsuported parameter max_tokens
 )
 
 
