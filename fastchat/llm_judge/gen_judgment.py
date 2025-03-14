@@ -123,6 +123,7 @@ def make_match_single(
             m = models[i]
             a = model_answers[m][q_id]
             if ref_answers is not None:
+                print(ref_answers) # THIS OUTPUTS {} when throwing error
                 ref = ref_answers[judge.model_name][q_id]
                 matches.append(
                     MatchSingle(
@@ -162,6 +163,11 @@ def make_judge_single(judge_model, judge_prompts):
         judge_prompts["single-math-v1-multi-turn"],
         ref_based=True,
         multi_turn=True,
+    )
+    judges["jp-judge"] = Judge(
+        judge_model,
+        judge_prompts['jp-v1'],
+        # ref_based=True
     )
     return judges
 
@@ -256,6 +262,7 @@ if __name__ == "__main__":
 
     question_math = [q for q in questions if q["category"] in NEED_REF_CATS]
     question_default = [q for q in questions if q["category"] not in NEED_REF_CATS]
+    questions_custom = [q for q in questions if q["category"] == "custom"]
 
     # Make matches
     matches = []
@@ -286,6 +293,15 @@ if __name__ == "__main__":
         baseline_model,
         ref_answers,
         multi_turn=True,
+    )
+    matches += make_match_func(
+        questions_custom,
+        models,
+        model_answers,
+        judges["jp-judge"],  # Use your custom judge
+        baseline_model,
+        None,  # Include reference answers
+        multi_turn=False  # Single-turn
     )
 
     match_stat = {}
