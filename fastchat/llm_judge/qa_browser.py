@@ -89,31 +89,41 @@ def display_pairwise_answer(
     chat_mds = pairwise_to_gradio_chat_mds(q, ans1, ans2)
     gamekey = (qid, model_selector1, model_selector2)
 
-    judgment_dict = resolve_pairwise_judgment_dict(
-        q,
-        model_judgments_normal_pairwise,
-        model_judgments_math_pairwise,
-        judge_model=judge_model,
-        multi_turn=False,
-    )
+    # Only show first turn judgment if available
+    explanation = ""
+    if model_judgments_normal_pairwise:
+        try:
+            judgment_dict = resolve_pairwise_judgment_dict(
+                q,
+                model_judgments_normal_pairwise,
+                model_judgments_math_pairwise,
+                judge_model=judge_model,
+                multi_turn=False,
+            )
+            explanation = (
+                "##### Model Judgment (first turn)\n"
+                + get_pairwise_judge_explanation(gamekey, judgment_dict)
+            )
+        except (KeyError, TypeError):
+            explanation = "##### Model Judgment\nNo judgment available for the first turn."
 
-    explanation = (
-        "##### Model Judgment (first turn)\n"
-        + get_pairwise_judge_explanation(gamekey, judgment_dict)
-    )
-
-    judgment_dict_turn2 = resolve_pairwise_judgment_dict(
-        q,
-        model_judgments_normal_pairwise,
-        model_judgments_math_pairwise,
-        judge_model=judge_model,
-        multi_turn=True,
-    )
-
-    explanation_turn2 = (
-        "##### Model Judgment (second turn)\n"
-        + get_pairwise_judge_explanation(gamekey, judgment_dict_turn2)
-    )
+    # Only show second turn judgment if multi-turn answers are available
+    explanation_turn2 = ""
+    if len(q.get("turns", [])) > 1 and model_judgments_normal_pairwise:
+        try:
+            judgment_dict_turn2 = resolve_pairwise_judgment_dict(
+                q,
+                model_judgments_normal_pairwise,
+                model_judgments_math_pairwise,
+                judge_model=judge_model,
+                multi_turn=True,
+            )
+            explanation_turn2 = (
+                "##### Model Judgment (second turn)\n"
+                + get_pairwise_judge_explanation(gamekey, judgment_dict_turn2)
+            )
+        except (KeyError, TypeError):
+            explanation_turn2 = "##### Model Judgment\nNo judgment available for the second turn."
 
     return chat_mds + [explanation] + [explanation_turn2]
 
@@ -129,22 +139,34 @@ def display_single_answer(
     chat_mds = single_to_gradio_chat_mds(q, ans1)
     gamekey = (qid, model_selector1)
 
-    judgment_dict = resolve_single_judgment_dict(
-        q, model_judgments_normal_single, model_judgments_math_single, judge_model=judge_model, multi_turn=False
-    )
+    # Only show first turn judgment if available
+    explanation = ""
+    if model_judgments_normal_single:
+        try:
+            judgment_dict = resolve_single_judgment_dict(
+                q, model_judgments_normal_single, model_judgments_math_single, 
+                judge_model=judge_model, multi_turn=False
+            )
+            explanation = "##### Model Judgment (first turn)\n" + get_single_judge_explanation(
+                gamekey, judgment_dict
+            )
+        except (KeyError, TypeError):
+            explanation = "##### Model Judgment\nNo judgment available for the first turn."
 
-    explanation = "##### Model Judgment (first turn)\n" + get_single_judge_explanation(
-        gamekey, judgment_dict
-    )
-
-    judgment_dict_turn2 = resolve_single_judgment_dict(
-        q, model_judgments_normal_single, model_judgments_math_single, judge_model=judge_model, multi_turn=True
-    )
-
-    explanation_turn2 = (
-        "##### Model Judgment (second turn)\n"
-        + get_single_judge_explanation(gamekey, judgment_dict_turn2)
-    )
+    # Only show second turn judgment if multi-turn answers are available
+    explanation_turn2 = ""
+    if len(q.get("turns", [])) > 1 and model_judgments_normal_single:
+        try:
+            judgment_dict_turn2 = resolve_single_judgment_dict(
+                q, model_judgments_normal_single, model_judgments_math_single, 
+                judge_model=judge_model, multi_turn=True
+            )
+            explanation_turn2 = (
+                "##### Model Judgment (second turn)\n"
+                + get_single_judge_explanation(gamekey, judgment_dict_turn2)
+            )
+        except (KeyError, TypeError):
+            explanation_turn2 = "##### Model Judgment\nNo judgment available for the second turn."
 
     return chat_mds + [explanation] + [explanation_turn2]
 
@@ -162,23 +184,76 @@ def post_process_answer(x):
 
 
 def pairwise_to_gradio_chat_mds(question, ans_a, ans_b, turn=None):
-    end = len(question["turns"]) if turn is None else turn + 1
+    # Handle single-turn vs multi-turn questions
+    if not isinstance(question.get("turns", []), list):
+        question["turns"] = [question.get("turns", "")]
+    
+    # Ensure turns exists in question
+    if "turns" not in question:
+        question["turns"] = [""]
+    
+    end = min(len(question["turns"]), 2)  # Display up to 2 turns
+    if turn is not None:
+        end = min(turn + 1, end)
 
     mds = ["", "", "", "", "", "", ""]
+    
     for i in range(end):
         base = i * 3
         if i == 0:
             mds[base + 0] = "##### User\n" + question["turns"][i]
         else:
             mds[base + 0] = "##### User's follow-up question \n" + question["turns"][i]
-        mds[base + 1] = "##### Assistant A\n" + post_process_answer(
-            ans_a["choices"][0]["turns"][i].strip()
-        )
-        mds[base + 2] = "##### Assistant B\n" + post_process_answer(
-            ans_b["choices"][0]["turns"][i].strip()
-        )
+        
+        # Handle single-turn answers
+        if "choices" in ans_a and "turns" in ans_a["choices"][0]:
+            turns_a = ans_a["choices"][0]["turns"]
+            if i < len(turns_a):
+                mds[base + 1] = "##### Assistant A\n" + post_process_answer(
+                    turns_a[i].strip()
+                )
+            else:
+                mds[base + 1] = "##### Assistant A\n" + "No answer for this turn."
+        else:
+            # Single turn format
+            if i == 0 and "choices" in ans_a and isinstance(ans_a["choices"], list) and ans_a["choices"]:
+                if isinstance(ans_a["choices"][0], dict) and "turns" in ans_a["choices"][0]:
+                    mds[base + 1] = "##### Assistant A\n" + post_process_answer(
+                        ans_a["choices"][0]["turns"][0].strip() if ans_a["choices"][0]["turns"] else ""
+                    )
+                else:
+                    mds[base + 1] = "##### Assistant A\n" + post_process_answer(
+                        str(ans_a["choices"][0]).strip()
+                    )
+            else:
+                mds[base + 1] = "##### Assistant A\n" + "No answer available."
+        
+        # Handle single-turn answers for model B
+        if "choices" in ans_b and "turns" in ans_b["choices"][0]:
+            turns_b = ans_b["choices"][0]["turns"]
+            if i < len(turns_b):
+                mds[base + 2] = "##### Assistant B\n" + post_process_answer(
+                    turns_b[i].strip()
+                )
+            else:
+                mds[base + 2] = "##### Assistant B\n" + "No answer for this turn."
+        else:
+            # Single turn format
+            if i == 0 and "choices" in ans_b and isinstance(ans_b["choices"], list) and ans_b["choices"]:
+                if isinstance(ans_b["choices"][0], dict) and "turns" in ans_b["choices"][0]:
+                    mds[base + 2] = "##### Assistant B\n" + post_process_answer(
+                        ans_b["choices"][0]["turns"][0].strip() if ans_b["choices"][0]["turns"] else ""
+                    )
+                else:
+                    mds[base + 2] = "##### Assistant B\n" + post_process_answer(
+                        str(ans_b["choices"][0]).strip()
+                    )
+            else:
+                mds[base + 2] = "##### Assistant B\n" + "No answer available."
 
     ref = question.get("reference", [])  # Default to empty list if no reference
+    if not isinstance(ref, list):
+        ref = [ref]  # Convert single reference to list
 
     if turn is None:
         if ref:  # If there are any references
@@ -196,20 +271,53 @@ def pairwise_to_gradio_chat_mds(question, ans_a, ans_b, turn=None):
 
 
 def single_to_gradio_chat_mds(question, ans, turn=None):
-    end = len(question["turns"]) if turn is None else turn + 1
+    # Handle single-turn vs multi-turn questions
+    if not isinstance(question.get("turns", []), list):
+        question["turns"] = [question.get("turns", "")]
+    
+    # Ensure turns exists in question
+    if "turns" not in question:
+        question["turns"] = [""]
+    
+    end = min(len(question["turns"]), 2)  # Display up to 2 turns
+    if turn is not None:
+        end = min(turn + 1, end)
 
     mds = ["", "", "", "", ""]
+    
     for i in range(end):
         base = i * 2
         if i == 0:
             mds[base + 0] = "##### User\n" + question["turns"][i]
         else:
             mds[base + 0] = "##### User's follow-up question \n" + question["turns"][i]
-        mds[base + 1] = "##### Assistant A\n" + post_process_answer(
-            ans["choices"][0]["turns"][i].strip()
-        )
+        
+        # Handle single-turn answers
+        if "choices" in ans and "turns" in ans["choices"][0]:
+            turns_a = ans["choices"][0]["turns"]
+            if i < len(turns_a):
+                mds[base + 1] = "##### Assistant A\n" + post_process_answer(
+                    turns_a[i].strip()
+                )
+            else:
+                mds[base + 1] = "##### Assistant A\n" + "No answer for this turn."
+        else:
+            # Single turn format
+            if i == 0 and "choices" in ans and isinstance(ans["choices"], list) and ans["choices"]:
+                if isinstance(ans["choices"][0], dict) and "turns" in ans["choices"][0]:
+                    mds[base + 1] = "##### Assistant A\n" + post_process_answer(
+                        ans["choices"][0]["turns"][0].strip() if ans["choices"][0]["turns"] else ""
+                    )
+                else:
+                    mds[base + 1] = "##### Assistant A\n" + post_process_answer(
+                        str(ans["choices"][0]).strip()
+                    )
+            else:
+                mds[base + 1] = "##### Assistant A\n" + "No answer available."
 
     ref = question.get("reference", [])  # Default to empty list if no reference
+    if not isinstance(ref, list):
+        ref = [ref]  # Convert single reference to list
 
     if turn is None:
         if ref:  # If there are any references
@@ -231,7 +339,13 @@ def build_question_selector_map():
 
     # Build question selector map
     for q in questions:
-        preview = f"{q['question_id']}: " + q["turns"][0][:128] + "..."
+        # Handle both multi-turn and single-turn formats
+        if isinstance(q.get("turns", []), list) and q["turns"]:
+            preview_text = q["turns"][0]
+        else:
+            preview_text = q.get("turns", "")
+            
+        preview = f"{q['question_id']}: " + str(preview_text)[:128] + "..."
         question_selector_map[preview] = q
         category_selector_map[q["category"]].append(preview)
 
@@ -263,9 +377,9 @@ def build_pairwise_browser_tab():
         for i in range(num_sides):
             with gr.Column():
                 if i == 0:
-                    value = models[0]
+                    value = models[0] if models else ""
                 else:
-                    value = "gpt-3.5-turbo"
+                    value = models[1] if len(models) > 1 else models[0] if models else ""
                 model_selectors[i] = gr.Dropdown(
                     choices=models,
                     value=value,
