@@ -14,15 +14,42 @@ from fastchat.llm_judge.common import (
     load_model_answers,
     load_single_model_judgments,
     load_pairwise_model_judgments,
-    resolve_single_judgment_dict,
+    # resolve_single_judgment_dict,
     # resolve_pairwise_judgment_dict,
     get_single_judge_explanation,
     get_pairwise_judge_explanation,
+    NEED_REF_CATS
 )
 
-def resolve_pairwise_judgment_dict(question, model_judgments_normal, model_judgments_math, multi_turn=False):
-    """Local version that only handles single-turn judgments"""
-    return model_judgments_normal[("gpt-4", "pair-v2")]
+
+def resolve_pairwise_judgment_dict(
+    question, model_judgments_normal, model_judgments_math, judge_model, multi_turn=False
+):
+    """Return the correct pairwise judge."""
+    if multi_turn:
+        if question["category"] in NEED_REF_CATS:
+            return model_judgments_math[(judge_model, "pair-math-v1-multi-turn")]
+        return model_judgments_normal[(judge_model, "pair-v2-multi-turn")]
+
+    if question["category"] in NEED_REF_CATS:
+        return model_judgments_math[(judge_model, "pair-math-v1")]
+    else:
+        return model_judgments_normal[(judge_model, "pair-v2")]
+
+
+def resolve_single_judgment_dict(
+    question, model_judgments_normal, model_judgments_math, judge_model, multi_turn=False
+):
+    """Return the correct single answer grading judge."""
+    if multi_turn:
+        if question["category"] in NEED_REF_CATS:
+            return model_judgments_math[(judge_model, "single-math-v1-multi-turn")]
+        return model_judgments_normal[(judge_model, "single-v1-multi-turn")]
+
+    if question["category"] in NEED_REF_CATS:
+        return model_judgments_math[(judge_model, "single-math-v1")]
+    else:
+        return model_judgments_normal[(judge_model, "single-v1")]
 
 questions = []
 model_answers = {}
@@ -38,15 +65,20 @@ category_selector_map = defaultdict(list)
 
 
 def display_question(category_selector, request: gr.Request):
-    choices = category_selector_map[category_selector]
+    # Convert category_selector to string if it's a list
+    if isinstance(category_selector, list) and len(category_selector) > 0:
+        category_selector = category_selector[0]
+    
+    # Now category_selector should be a string
+    choices = category_selector_map.get(category_selector, [])
     return gr.Dropdown(
-        value=choices[0],
+        value=choices[0] if choices else None,
         choices=choices,
     )
 
 
 def display_pairwise_answer(
-    question_selector, model_selector1, model_selector2, request: gr.Request
+    question_selector, model_selector1, model_selector2, judge_model, request: gr.Request
 ):
     q = question_selector_map[question_selector]
     qid = q["question_id"]
@@ -61,6 +93,7 @@ def display_pairwise_answer(
         q,
         model_judgments_normal_pairwise,
         model_judgments_math_pairwise,
+        judge_model=judge_model,
         multi_turn=False,
     )
 
@@ -73,6 +106,7 @@ def display_pairwise_answer(
         q,
         model_judgments_normal_pairwise,
         model_judgments_math_pairwise,
+        judge_model=judge_model,
         multi_turn=True,
     )
 
@@ -84,7 +118,9 @@ def display_pairwise_answer(
     return chat_mds + [explanation] + [explanation_turn2]
 
 
-def display_single_answer(question_selector, model_selector1, request: gr.Request):
+def display_single_answer(
+    question_selector, model_selector1, judge_model, request: gr.Request
+):
     q = question_selector_map[question_selector]
     qid = q["question_id"]
 
@@ -94,7 +130,7 @@ def display_single_answer(question_selector, model_selector1, request: gr.Reques
     gamekey = (qid, model_selector1)
 
     judgment_dict = resolve_single_judgment_dict(
-        q, model_judgments_normal_single, model_judgments_math_single, multi_turn=False
+        q, model_judgments_normal_single, model_judgments_math_single, judge_model=judge_model, multi_turn=False
     )
 
     explanation = "##### Model Judgment (first turn)\n" + get_single_judge_explanation(
@@ -102,7 +138,7 @@ def display_single_answer(question_selector, model_selector1, request: gr.Reques
     )
 
     judgment_dict_turn2 = resolve_single_judgment_dict(
-        q, model_judgments_normal_single, model_judgments_math_single, multi_turn=True
+        q, model_judgments_normal_single, model_judgments_math_single, judge_model=judge_model, multi_turn=True
     )
 
     explanation_turn2 = (
@@ -259,14 +295,14 @@ def build_pairwise_browser_tab():
     category_selector.change(display_question, [category_selector], [question_selector])
     question_selector.change(
         display_pairwise_answer,
-        [question_selector] + model_selectors,
+        [question_selector] + model_selectors + [gr.State(args.judge_model)],  # Add judge_model
         chat_mds + [model_explanation] + [model_explanation2],
     )
 
     for i in range(num_sides):
         model_selectors[i].change(
             display_pairwise_answer,
-            [question_selector] + model_selectors,
+            [question_selector] + model_selectors + [gr.State(args.judge_model)],  # Add judge_model
             chat_mds + [model_explanation] + [model_explanation2],
         )
 
@@ -329,14 +365,14 @@ def build_single_answer_browser_tab():
     category_selector.change(display_question, [category_selector], [question_selector])
     question_selector.change(
         display_single_answer,
-        [question_selector] + model_selectors,
+        [question_selector] + model_selectors + [gr.State(args.judge_model)],  # Add judge_model
         chat_mds + [model_explanation] + [model_explanation2],
     )
 
     for i in range(num_sides):
         model_selectors[i].change(
             display_single_answer,
-            [question_selector] + model_selectors,
+            [question_selector] + model_selectors + [gr.State(args.judge_model)],  # Add judge_model
             chat_mds + [model_explanation] + [model_explanation2],
         )
 
@@ -397,9 +433,8 @@ block_css = """
 
 
 def load_demo():
-    first_category = list(category_selector_map.keys())[0]
+    first_category = list(category_selector_map.keys())[0] if category_selector_map else None
     return first_category, first_category
-
 
 def build_demo():
     build_question_selector_map()
@@ -415,16 +450,25 @@ def build_demo():
 The code to generate answers and judgments is at [fastchat.llm_judge](https://github.com/lm-sys/FastChat/tree/main/fastchat/llm_judge).
 """
         )
+        
+        category_selector = None
+        category_selector2 = None
+        
+        # Only show tabs for which we have judgment files
         if model_judgments_normal_single is not None:
             with gr.Tab("Single Answer Grading"):
                 (category_selector,) = build_single_answer_browser_tab()
-        with gr.Tab("Pairwise Comparison"):
-            (category_selector2,) = build_pairwise_browser_tab()
+                
+        if model_judgments_normal_pairwise is not None:
+            with gr.Tab("Pairwise Comparison"):
+                (category_selector2,) = build_pairwise_browser_tab()
         
-        # Modify the demo.load call to handle the case when single judgments are not available
-        if model_judgments_normal_single is not None:
+        # Handle the demo.load based on which tabs are available
+        if category_selector and category_selector2:
             demo.load(load_demo, [], [category_selector, category_selector2])
-        else:
+        elif category_selector:
+            demo.load(load_demo, [], [category_selector])
+        elif category_selector2:
             demo.load(load_demo, [], [category_selector2])
 
     return demo
@@ -459,7 +503,10 @@ if __name__ == "__main__":
     model_judgments_normal_single = model_judgments_math_single = None
     if os.path.exists(single_model_judgment_file):
         model_judgments_normal_single = model_judgments_math_single = load_single_model_judgments(single_model_judgment_file)
-    model_judgments_normal_pairwise = model_judgments_math_pairwise = load_pairwise_model_judgments(pairwise_model_judgment_file)
+
+    model_judgments_normal_pairwise = model_judgments_math_pairwise = None
+    if os.path.exists(pairwise_model_judgment_file):
+        model_judgments_normal_pairwise = model_judgments_math_pairwise = load_pairwise_model_judgments(pairwise_model_judgment_file)
 
     demo = build_demo()
     demo.queue(
