@@ -39,6 +39,10 @@ def resolve_single_judgment_dict(
     question, model_judgments_normal, model_judgments_math, judge_model, multi_turn=False
 ):
     """Return the correct single answer grading judge."""
+    if args.judge_prompt is not None:
+        if question["category"] in NEED_REF_CATS:
+            return model_judgments_math[(judge_model, args.judge_prompt)]
+        return model_judgments_normal[(judge_model, args.judge_prompt)]
     if multi_turn:
         if question["category"] in NEED_REF_CATS:
             return model_judgments_math[(judge_model, "single-math-v1-multi-turn")]
@@ -593,6 +597,7 @@ if __name__ == "__main__":
     parser.add_argument("--share", action="store_true")
     parser.add_argument("--bench-name", type=str, default="mt_bench")
     parser.add_argument("--judge-model", type=str, default="gpt-4o-mini")
+    parser.add_argument("--judge-prompt", type=str, default=None)
     args = parser.parse_args()
     print(args)
 
